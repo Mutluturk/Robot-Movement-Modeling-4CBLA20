@@ -1,0 +1,101 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# =========================
+# ROBOT PARAMETERS
+# =========================
+m = 1.8               # mass [kg]
+r = 0.035             # wheel radius [m]
+g = 9.81              # gravity
+mu = 0.7              # friction coefficient
+tau = 0.25            # motor torque per wheel [Nm]
+gear_ratio = 1        # modify if needed
+
+# =========================
+# SIMULATION SETTINGS
+# =========================
+dt = 0.001
+T = 6
+t = np.arange(0, T, dt)
+
+# =========================
+# TRACK DEFINITION
+# Change this to match your wooden track
+# =========================
+def slope_angle(x):
+    if x < 0.25:                 # first ramp
+        return np.deg2rad(20)
+    elif x < 0.5:                # flat
+        return 0
+    elif x < 0.75:               # second ramp
+        return np.deg2rad(-15)
+    else:
+        return 0
+
+# =========================
+# INITIAL CONDITIONS
+# =========================
+x = 0
+v = 0
+
+x_list = []
+v_list = []
+slip_list = []
+
+for _ in t:
+
+    alpha = slope_angle(x)
+
+    # Forces
+    F_gravity = m * g * np.sin(alpha)
+    N = m * g * np.cos(alpha)
+    F_max_friction = mu * N
+
+    # Motor force (2 wheels)
+    F_motor = 2 * (tau * gear_ratio) / r
+
+    # Check slipping
+    if F_motor > F_max_friction:
+        F_drive = F_max_friction
+        slipping = True
+    else:
+        F_drive = F_motor
+        slipping = False
+
+    # Net force
+    F_net = F_drive - F_gravity
+
+    # Acceleration
+    a = F_net / m
+
+    # Integrate motion
+    v += a * dt
+    x += v * dt
+
+    # Store values
+    x_list.append(x)
+    v_list.append(v)
+    slip_list.append(slipping)
+
+plt.figure()
+plt.plot(t, x_list)
+plt.title("Position vs Time")
+plt.xlabel("Time (s)")
+plt.ylabel("Position (m)")
+plt.grid()
+
+plt.figure()
+plt.plot(t, v_list)
+plt.title("Velocity vs Time")
+plt.xlabel("Time (s)")
+plt.ylabel("Velocity (m/s)")
+plt.grid()
+
+plt.figure()
+plt.plot(t, slip_list)
+plt.title("Slipping (1=True, 0=False)")
+plt.xlabel("Time (s)")
+plt.ylabel("Slip")
+plt.grid()
+
+plt.show()
