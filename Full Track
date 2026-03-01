@@ -75,7 +75,7 @@ y_track = [track_height(xi) for xi in x_track]
 
 plt.figure()
 plt.plot(x_track, y_track, label="Track")
-plt.plot(x_list, y_list, label="Robot Path")
+plt.scatter(x_list[-1], y_list[-1], color='red', s=80, label="Robot Final Position")
 plt.xlabel("Horizontal Position (m)")
 plt.ylabel("Height (m)")
 plt.title("Full Track Simulation")
