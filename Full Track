@@ -34,7 +34,7 @@ def slope_angle(x):
 # SIMULATION
 # =========================
 dt = 0.001
-T = 6
+T = 15
 t = np.arange(0, T, dt)
 
 x = 0
