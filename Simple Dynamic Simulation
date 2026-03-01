@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 
 # Parameters
 m = 1.5           # kg
-r = 0.03          # wheel radius (m)
+r = 0.055         # wheel radius (m)
 L = 0.15          # wheel distance (m)
 g = 9.81
-alpha = np.deg2rad(20)  # ramp angle
+alpha = np.deg2rad(17) # ramp angle
 tau = 0.2         # motor torque (Nm)
 mu = 0.6
 

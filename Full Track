@@ -1,36 +1,38 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# ======================
-# ROBOT DATA (REAL)
-# ======================
-m = 2              # kg (adjust if needed)
-r = 0.075            # wheel radius [m]
+# =========================
+# ROBOT PARAMETERS
+# =========================
+m = 2.5
+r = 0.055
 g = 9.81
 mu = 0.6
-
-tau = 1.08           # Nm (servo torque)
+tau = 1.08
 rpm_servo = 71.4
 
 omega_max = rpm_servo * 2*np.pi / 60
 v_max = omega_max * r
 
-# ======================
-# TRACK: DOWN THEN UP
-# ======================
-def slope_angle(x):
-    if x < 0.30:             # downhill first
-        return np.deg2rad(-17)
-    elif x < 0.55:           # bottom flat
-        return 0
-    elif x < 0.85:           # uphill
-        return np.deg2rad(17)
+# =========================
+# TRACK PROFILE (continuous)
+# =========================
+def track_height(x):
+    if x < 0.4:                 # downhill (smooth curve)
+        return -0.2*np.sin(np.pi*x/0.4)
+    elif x < 0.8:               # uphill
+        return -0.2*np.sin(np.pi*0.4/0.4) + 0.2*np.sin(np.pi*(x-0.4)/0.4)
     else:
-        return 0             # final flat
+        return 0
 
-# ======================
+def slope_angle(x):
+    dx = 1e-5
+    dhdx = (track_height(x+dx) - track_height(x-dx)) / (2*dx)
+    return np.arctan(dhdx)
+
+# =========================
 # SIMULATION
-# ======================
+# =========================
 dt = 0.001
 T = 6
 t = np.arange(0, T, dt)
@@ -39,8 +41,7 @@ x = 0
 v = 0
 
 x_list = []
-v_list = []
-angle_list = []
+y_list = []
 
 for _ in t:
 
@@ -58,38 +59,26 @@ for _ in t:
 
     v += a * dt
 
-    # Servo speed limit
     if v > v_max:
         v = v_max
 
     x += v * dt
 
     x_list.append(x)
-    v_list.append(v)
-    angle_list.append(np.rad2deg(alpha))
+    y_list.append(track_height(x))
 
-# ======================
-# PLOTS
-# ======================
-plt.figure()
-plt.plot(t, x_list)
-plt.xlabel("Time (s)")
-plt.ylabel("Position (m)")
-plt.title("Position on Down-Up Track")
-plt.grid()
+# =========================
+# PLOT TRACK + ROBOT PATH
+# =========================
+x_track = np.linspace(0, 1.2, 1000)
+y_track = [track_height(xi) for xi in x_track]
 
 plt.figure()
-plt.plot(t, v_list)
-plt.xlabel("Time (s)")
-plt.ylabel("Velocity (m/s)")
-plt.title("Velocity Profile")
+plt.plot(x_track, y_track, label="Track")
+plt.plot(x_list, y_list, label="Robot Path")
+plt.xlabel("Horizontal Position (m)")
+plt.ylabel("Height (m)")
+plt.title("Full Track Simulation")
+plt.legend()
 plt.grid()
-
-plt.figure()
-plt.plot(t, angle_list)
-plt.xlabel("Time (s)")
-plt.ylabel("Slope Angle (deg)")
-plt.title("Track Angle")
-plt.grid()
-
 plt.show()
