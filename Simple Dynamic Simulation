@@ -40,5 +40,5 @@ for _ in t:
 plt.plot(t, x_list)
 plt.xlabel("Time (s)")
 plt.ylabel("Position on ramp (m)")
-plt.title("Robot climbing ramp")
+plt.title("Robot down ramp")
 plt.show()
