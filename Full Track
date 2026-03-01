@@ -1,94 +1,89 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 # =========================
 # PARAMETERS
 # =========================
 m, r, g, mu, tau = 2.5, 0.055, 9.81, 0.6, 1.08
-v_max = (71.4 * 2 * np.pi / 60) * r  # ~0.41 m/s
+angle_rad = np.radians(17)
+v_max = (71.4 * 2 * np.pi / 60) * r
+R = 0.4  # U-turn radius
+L_slope = 1.0 
 
-# 20-degree incline in radians
-incline_rad = np.radians(20)
-slope_up = np.tan(incline_rad)
-
-# =========================
-# TRACK GEOMETRY (The "U")
-# =========================
-def track_height(x):
-    if x < 0.3: # Downhill
-        return -0.6 * x
-    elif x < 0.9: # The "U-Turn" Bottom (flat but curved)
-        return -0.18 
-    else: # 20 Degree Incline
-        return -0.18 + slope_up * (x - 0.9)
-
-def get_physics_params(x, v):
-    # Determine slope angle
-    if x < 0.3: alpha = np.arctan(-0.6)
-    elif x < 0.9: alpha = 0
-    else: alpha = incline_rad
+def get_robot_coords(s):
+    """Maps distance 's' to (x, y, z) for one U-Turn"""
+    # 1. Decline (straight line)
+    if s < L_slope:
+        return s * np.cos(angle_rad), 0, -s * np.sin(angle_rad)
     
-    # Simulate "Turn" resistance (2 U-turns)
-    # We increase 'virtual' friction or drag during the turns (0.4 to 0.8m)
-    turn_resistance = 0
-    if 0.4 < x < 0.6 or 0.7 < x < 0.9:
-        turn_resistance = 5.0 * v # Drag proportional to speed in turn
-        
-    return alpha, turn_resistance
+    # 2. The U-Turn (Semicircle at the bottom)
+    s_turn = s - L_slope
+    if s_turn < np.pi * R:
+        theta = s_turn / R
+        x = L_slope * np.cos(angle_rad) + R * np.sin(theta)
+        y = R - R * np.cos(theta)
+        z = -L_slope * np.sin(angle_rad)
+        return x, y, z
+    
+    # 3. Incline (straight line back)
+    s_up = s - L_slope - (np.pi * R)
+    # Moving back 'inward' along X
+    x_base = L_slope * np.cos(angle_rad)
+    return x_base - s_up * np.cos(angle_rad), 2*R, -L_slope * np.sin(angle_rad) + s_up * np.sin(angle_rad)
 
 # =========================
 # SIMULATION
 # =========================
-dt = 0.001
-x, v = 0, 0
-history = []
+dt = 0.01
+s, v = 0, 0
+total_len = 2*L_slope + np.pi*R
+path = []
 
 for t in np.arange(0, 10, dt):
-    alpha, turn_drag = get_physics_params(x, v)
-    
-    # Forces
+    # Determine slope based on 's'
+    if s < L_slope:
+        alpha = -angle_rad # Down
+    elif s > L_slope + np.pi*R:
+        alpha = angle_rad  # Up
+    else:
+        alpha = 0          # Flat turn
+        
+    # Simple Physics
     F_motor = (2 * tau) / r
-    N = m * g * np.cos(alpha)
     F_gravity = m * g * np.sin(alpha)
-    F_traction_limit = mu * N
+    F_traction = mu * m * g * np.cos(alpha)
     
-    # Available driving force
-    F_drive = min(F_motor, F_traction_limit)
+    F_drive = min(F_motor, F_traction)
+    a = (F_drive - F_gravity) / m
     
-    # Net acceleration (including turn drag)
-    F_net = F_drive - F_gravity - turn_drag
-    a = F_net / m
-    
-    v = max(0, min(v + a * dt, v_max))
-    x += v * dt
-    
-    history.append((x, track_height(x), v))
-    if x > 1.5: break
+    v = max(0, min(v + a*dt, v_max))
+    s += v * dt
+    path.append(get_robot_coords(s))
+    if s >= total_len: break
 
 # =========================
-# ANALYSIS & PLOT
+# PLOTTING
 # =========================
-data = np.array(history)
-plt.figure(figsize=(10, 5))
+path = np.array(path)
+fig = plt.figure(figsize=(10, 7))
+ax = fig.add_subplot(111, projection='3d')
 
-# Plot the profile
-plt.plot(data[:,0], data[:,1], 'b-', linewidth=3, label="Robot Path")
-plt.fill_between(data[:,0], -0.3, data[:,1], color='gray', alpha=0.2)
+# Draw Track
+s_vals = np.linspace(0, total_len, 400)
+track_pts = np.array([get_robot_coords(sv) for sv in s_vals])
+ax.plot(track_pts[:,0], track_pts[:,1], track_pts[:,2], 'k--', alpha=0.3, label="Track")
 
-# Annotate turns
-plt.text(0.5, -0.15, "Turn 1", ha='center', fontweight='bold')
-plt.text(0.8, -0.15, "Turn 2", ha='center', fontweight='bold')
+# Draw Robot Movement
+ax.plot(path[:,0], path[:,1], path[:,2], 'blue', lw=2.5, label="Robot Path")
+ax.scatter(path[-1,0], path[-1,1], path[-1,2], color='red', s=100, label="Robot Finish")
 
-plt.title("Robot Simulation: Down -> 2 Turns -> 20° Incline")
-plt.xlabel("Distance (m)")
-plt.ylabel("Height (m)")
-plt.grid(True, linestyle=':')
+ax.set_xlabel("X (m)")
+ax.set_ylabel("Y (m) - Turn Width")
+ax.set_zlabel("Height (m)")
+ax.set_title("Robot: Decline -> 180° Turn -> Incline")
+ax.legend()
 plt.show()
 
-# Final Check
-required_f = m * g * np.sin(incline_rad)
-available_f = min((2*tau)/r, mu * m * g * np.cos(incline_rad))
-
-print(f"Gravity force to overcome: {required_f:.2f} N")
-print(f"Max available drive force: {available_f:.2f} N")
-print(f"Status: {'SUCCESS' if available_f > required_f else 'FAILED'}")
+print(f"Total distance covered: {s:.2f} m")
+print(f"Final Height: {path[-1,2]:.2f} m")
