@@ -1,89 +1,95 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-m = 1.8               # mass [kg]
-r = 0.035             # wheel radius [m]
-g = 9.81              # gravity
-mu = 0.7              # friction coefficient
-tau = 0.25            # motor torque per wheel [Nm]
-gear_ratio = 1        # modify if needed
+# ======================
+# ROBOT DATA (REAL)
+# ======================
+m = 2              # kg (adjust if needed)
+r = 0.075            # wheel radius [m]
+g = 9.81
+mu = 0.6
 
+tau = 1.08           # Nm (servo torque)
+rpm_servo = 71.4
+
+omega_max = rpm_servo * 2*np.pi / 60
+v_max = omega_max * r
+
+# ======================
+# TRACK: DOWN THEN UP
+# ======================
+def slope_angle(x):
+    if x < 0.30:             # downhill first
+        return np.deg2rad(-17)
+    elif x < 0.55:           # bottom flat
+        return 0
+    elif x < 0.85:           # uphill
+        return np.deg2rad(17)
+    else:
+        return 0             # final flat
+
+# ======================
+# SIMULATION
+# ======================
 dt = 0.001
 T = 6
 t = np.arange(0, T, dt)
-
-def slope_angle(x):
-    if x < 0.25:                 # first ramp
-        return np.deg2rad(-17)
-    elif x < 0.5:                # flat
-        return 0
-    elif x < 0.75:               # second ramp
-        return np.deg2rad(17)
-    else:
-        return 0
-
 
 x = 0
 v = 0
 
 x_list = []
 v_list = []
-slip_list = []
+angle_list = []
 
 for _ in t:
 
     alpha = slope_angle(x)
 
-    # Forces
+    F_motor = 2 * tau / r
     F_gravity = m * g * np.sin(alpha)
     N = m * g * np.cos(alpha)
-    F_max_friction = mu * N
+    F_max = mu * N
 
-    # Motor force (2 wheels)
-    F_motor = 2 * (tau * gear_ratio) / r
+    F_drive = min(F_motor, F_max)
 
-    # Check slipping
-    if F_motor > F_max_friction:
-        F_drive = F_max_friction
-        slipping = True
-    else:
-        F_drive = F_motor
-        slipping = False
-
-    # Net force
     F_net = F_drive - F_gravity
-
-    # Acceleration
     a = F_net / m
 
-    # Integrate motion
     v += a * dt
+
+    # Servo speed limit
+    if v > v_max:
+        v = v_max
+
     x += v * dt
 
-    # Store values
     x_list.append(x)
     v_list.append(v)
-    slip_list.append(slipping)
+    angle_list.append(np.rad2deg(alpha))
 
+# ======================
+# PLOTS
+# ======================
 plt.figure()
 plt.plot(t, x_list)
-plt.title("Position vs Time")
 plt.xlabel("Time (s)")
 plt.ylabel("Position (m)")
+plt.title("Position on Down-Up Track")
 plt.grid()
 
 plt.figure()
 plt.plot(t, v_list)
-plt.title("Velocity vs Time")
 plt.xlabel("Time (s)")
 plt.ylabel("Velocity (m/s)")
+plt.title("Velocity Profile")
 plt.grid()
 
 plt.figure()
-plt.plot(t, slip_list)
-plt.title("Slipping (1=True, 0=False)")
+plt.plot(t, angle_list)
 plt.xlabel("Time (s)")
-plt.ylabel("Slip")
+plt.ylabel("Slope Angle (deg)")
+plt.title("Track Angle")
 plt.grid()
 
 plt.show()

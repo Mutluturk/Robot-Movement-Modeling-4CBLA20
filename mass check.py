@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-m = 2.5              # estimated robot mass [kg] (adjust if needed)
+m = 2             # estimated robot mass [kg] (adjust if needed)
 r = 0.075            # wheel radius [m]
 g = 9.81
 mu = 0.6
