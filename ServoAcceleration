@@ -1,0 +1,56 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Servo parameters
+stall_torque = 0.3       # N·m
+no_load_rpm  = 60
+no_load_rad  = no_load_rpm * 2 * np.pi / 60
+
+wheel_radius = 0.055     # m
+robot_mass   = 0.3      # kg
+g            = 9.81
+
+# Track angles
+angles_deg = [0, -17, -17, 0, 0, +17, 0]
+labels     = ["Start", "Downhill", "Turn 1", "Straight", "Turn 2", "Uphill", "Finish"]
+
+torques     = []
+accels      = []
+seg_labels  = []
+
+for angle_deg, label in zip(angles_deg, labels):
+    angle_rad = np.radians(angle_deg)
+    for omega in np.linspace(0, no_load_rad, 100):
+        tau     = stall_torque * (1 - omega / no_load_rad)
+        F_drive = 2 * tau / wheel_radius
+        F_grav  = robot_mass * g * np.sin(angle_rad)
+        F_fric  = 0.02 * robot_mass * g
+        a       = (F_drive - F_grav - F_fric) / robot_mass
+
+        torques.append(tau)
+        accels.append(a)
+        seg_labels.append(label)
+
+torques = np.array(torques)
+accels  = np.array(accels)
+
+# Plot
+colors = ["#4CAF50","#FF9800","#E91E63","#2196F3","#9C27B0","#F44336","#00BCD4"]
+
+fig, ax = plt.subplots(figsize=(9, 6))
+
+for i, label in enumerate(labels):
+    mask = [s == label for s in seg_labels]
+    ax.plot(torques[mask], accels[mask], color=colors[i], label=label, linewidth=2)
+
+ax.axhline(0, color="gray", linewidth=1, linestyle="--")
+ax.set_xlabel("Servo Torque [N·m]")
+ax.set_ylabel("Linear Acceleration [m/s²]")
+ax.set_title("Servo Torque vs Acceleration — 2-Wheel Race Car")
+ax.legend()
+ax.grid(True)
+
+plt.tight_layout()
+plt.savefig("servo_vs_accel_basic.png", dpi=150)  # Windows
+print("Done")
+plt.show()
