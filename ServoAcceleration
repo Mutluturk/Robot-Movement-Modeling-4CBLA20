@@ -11,22 +11,26 @@ robot_mass   = 0.3      # kg
 g            = 9.81
 
 # Track angles
-angles_deg = [0, -17, -17, 0, 0, +17, 0]
+angles_deg = [+3, -17, -17, 0, 0, +17, +3]
 labels     = ["Start", "Downhill", "Turn 1", "Straight", "Turn 2", "Uphill", "Finish"]
 
 torques     = []
 accels      = []
 seg_labels  = []
 
+bump_energy_loss = (0.015 * robot_mass * g) / 0.03  # 15mm bump, converted to equivalent force
+turn_friction = {"Turn 1": bump_energy_loss, "Turn 2": bump_energy_loss}
+start_bonus   = {"Start": -0.01}  # nearly no rolling friction at launch
+
 for angle_deg, label in zip(angles_deg, labels):
-    angle_rad = np.radians(angle_deg)
+    angle_rad  = np.radians(angle_deg)
+    extra_drag = turn_friction.get(label, 0.0) + start_bonus.get(label, 0.0)
     for omega in np.linspace(0, no_load_rad, 100):
         tau     = stall_torque * (1 - omega / no_load_rad)
         F_drive = 2 * tau / wheel_radius
         F_grav  = robot_mass * g * np.sin(angle_rad)
-        F_fric  = 0.02 * robot_mass * g
+        F_fric  = (0.7 + extra_drag) * robot_mass * g
         a       = (F_drive - F_grav - F_fric) / robot_mass
-
         torques.append(tau)
         accels.append(a)
         seg_labels.append(label)
@@ -35,7 +39,7 @@ torques = np.array(torques)
 accels  = np.array(accels)
 
 # Plot
-colors = ["#4CAF50","#FF9800","#E91E63","#2196F3","#9C27B0","#F44336","#00BCD4"]
+colors = ["#4CAF50","#FF9800","#006400","#2196F3","#9C27B0","#F44336","#00BCD4"]
 
 fig, ax = plt.subplots(figsize=(9, 6))
 
@@ -43,6 +47,11 @@ for i, label in enumerate(labels):
     mask = [s == label for s in seg_labels]
     ax.plot(torques[mask], accels[mask], color=colors[i], label=label, linewidth=2)
 
+for label in labels:
+    mask = [s == label for s in seg_labels]
+    avg_a = np.mean(np.array(accels)[mask])
+    print(f"{label}: avg acceleration = {avg_a:.3f} m/s²")
+    
 ax.axhline(0, color="gray", linewidth=1, linestyle="--")
 ax.set_xlabel("Servo Torque [N·m]")
 ax.set_ylabel("Linear Acceleration [m/s²]")
