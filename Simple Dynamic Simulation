@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # Parameters
-m = 1.5           # kg
+m = 0.3           # kg
 r = 0.055         # wheel radius (m)
 L = 0.15          # wheel distance (m)
 g = 9.81
