@@ -18,7 +18,7 @@ torques     = []
 accels      = []
 seg_labels  = []
 
-bump_energy_loss = (0.015 * robot_mass * g) / 0.03  # 15mm bump, converted to equivalent force
+bump_energy_loss = (0.015 * robot_mass * g) / wheel_radius  # 15mm bump, converted to equivalent force
 turn_friction = {"Turn 1": bump_energy_loss, "Turn 2": bump_energy_loss}
 start_bonus   = {"Start": -0.01}  # nearly no rolling friction at launch
 
@@ -51,7 +51,7 @@ for label in labels:
     mask = [s == label for s in seg_labels]
     avg_a = np.mean(np.array(accels)[mask])
     print(f"{label}: avg acceleration = {avg_a:.3f} m/s²")
-    
+
 ax.axhline(0, color="gray", linewidth=1, linestyle="--")
 ax.set_xlabel("Servo Torque [N·m]")
 ax.set_ylabel("Linear Acceleration [m/s²]")
